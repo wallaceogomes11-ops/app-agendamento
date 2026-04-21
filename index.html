@@ -1,173 +1,551 @@
-// ============================================================
-//  COLE TODO ESTE CÓDIGO NO APPS SCRIPT DA SUA PLANILHA
-//  Extensões → Apps Script → apague tudo → cole → salve
-//  Depois: Implantar → Nova implantação → Web App
-//  Executar como: Eu  |  Quem tem acesso: Qualquer pessoa
-// ============================================================
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agendamento</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f0f0f; --bg2:#181818; --bg3:#222;
+  --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.15);
+  --gold:#c9a84c; --gold-light:#e8c96a; --gold-dim:rgba(201,168,76,0.15);
+  --text:#f0ede8; --text2:#999; --text3:#666;
+  --green:#4caf81; --red:#cf6679;
+  --r:6px; --rl:12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+.page{max-width:720px;margin:0 auto;padding:2rem 1.25rem 3rem}
 
-const SHEET_AGENDAMENTOS = "Agendamentos";
-const SHEET_HORARIOS      = "Horarios";
+.header{text-align:center;margin-bottom:2.5rem;padding-bottom:2rem;border-bottom:1px solid var(--border)}
+.orn{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:1rem}
+.orn-line{flex:1;max-width:80px;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
+.orn-line.r{background:linear-gradient(90deg,var(--gold),transparent)}
+.orn-d{width:8px;height:8px;background:var(--gold);transform:rotate(45deg)}
+.biz-name{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:600;letter-spacing:.04em;color:var(--text);line-height:1.1}
+.biz-sub{font-size:12px;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-top:6px;font-weight:300}
 
-function doGet(e) {
-  return handleRequest(e);
+.tabs{display:flex;gap:2px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:4px;margin-bottom:2rem}
+.tab{flex:1;padding:9px 12px;border:none;border-radius:8px;background:transparent;color:var(--text2);font-family:inherit;font-size:13px;cursor:pointer;transition:all .2s}
+.tab.active{background:var(--bg3);color:var(--gold);font-weight:500}
+.panel{display:none}.panel.active{display:block}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:1.5rem;margin-bottom:1rem}
+.card-title{font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--text);margin-bottom:4px}
+.card-sub{font-size:13px;color:var(--text2);margin-bottom:1.25rem}
+
+label{display:block;font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+input,select,textarea{width:100%;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:inherit;font-size:14px;transition:border-color .15s;outline:none;margin-bottom:14px;-webkit-appearance:none;appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.6);cursor:pointer}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+textarea{resize:vertical;min-height:72px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row2 input,.row2 select{margin-bottom:0}
+.row2>div{margin-bottom:14px}
+
+.slots-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-weight:500;margin-bottom:10px}
+.slots-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px}
+.slot{padding:10px 4px;text-align:center;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);background:var(--bg3);transition:all .15s;line-height:1.4}
+.slot:hover:not(.booked){border-color:var(--gold);color:var(--gold);background:var(--gold-dim)}
+.slot.selected{border-color:var(--gold);color:var(--gold);background:var(--gold-dim)}
+.slot.booked{color:var(--text3);border-color:var(--border);cursor:not-allowed;text-decoration:line-through;font-size:11px;opacity:.5}
+.sel-info{background:var(--gold-dim);border:1px solid rgba(201,168,76,.3);border-radius:var(--r);padding:10px 14px;font-size:13px;color:var(--gold);margin-top:12px}
+
+.btn-primary{width:100%;padding:13px;border:none;border-radius:var(--r);background:var(--gold);color:#0f0f0f;font-family:inherit;font-size:14px;font-weight:500;letter-spacing:.05em;cursor:pointer;transition:all .15s;margin-top:4px}
+.btn-primary:hover{background:var(--gold-light)}
+.btn-primary:disabled{background:#3a3220;color:#5a4e30;cursor:not-allowed}
+
+/* Modal */
+.modal-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center;padding:1rem}
+.modal-bd.show{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);padding:2rem;max-width:420px;width:100%;text-align:center}
+.modal-check{width:56px;height:56px;border-radius:50%;background:rgba(76,175,129,.15);border:1px solid rgba(76,175,129,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem}
+.modal-title{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--text);margin-bottom:8px}
+.modal-sub{font-size:13px;color:var(--text2);margin-bottom:1.5rem;line-height:1.6}
+.sum{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;text-align:left;margin-bottom:1.5rem}
+.sum-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px}
+.sum-row:last-child{border-bottom:none}
+.sum-row span:first-child{color:var(--text3)}
+.sum-row span:last-child{color:var(--text);font-weight:500}
+.btn-wa{width:100%;padding:13px;border:none;border-radius:var(--r);background:#25D366;color:#fff;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:8px;transition:background .15s}
+.btn-wa:hover{background:#1ebe5a}
+.btn-skip{width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--r);background:transparent;color:var(--text3);font-family:inherit;font-size:13px;cursor:pointer;transition:all .15s}
+.btn-skip:hover{color:var(--text2);border-color:var(--border2)}
+
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:11px 22px;font-size:13px;color:var(--text);white-space:nowrap;transition:transform .3s;z-index:999;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:var(--green);color:var(--green)}
+.toast.err{border-color:var(--red);color:var(--red)}
+
+.booking-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.booking-item:last-child{border-bottom:none;padding-bottom:0}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--gold-dim);border:1px solid rgba(201,168,76,.3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--gold);flex-shrink:0}
+.b-name{font-size:14px;font-weight:500;color:var(--text)}
+.b-meta{font-size:12px;color:var(--text2);margin-top:3px;line-height:1.5}
+.b-tag{display:inline-block;padding:2px 8px;background:var(--gold-dim);border-radius:20px;font-size:11px;color:var(--gold);font-weight:500;margin-right:4px}
+.btn-cancel{padding:5px 10px;background:transparent;border:1px solid rgba(207,102,121,.3);border-radius:var(--r);color:var(--red);font-family:inherit;font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-cancel:hover{background:rgba(207,102,121,.1)}
+.btn-wa-sm{padding:5px 10px;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.25);border-radius:var(--r);color:#25D366;font-family:inherit;font-size:12px;cursor:pointer;text-decoration:none;display:inline-block;white-space:nowrap}
+
+.slot-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.slot-row:last-child{border-bottom:none}
+.slot-badge{min-width:58px;text-align:center;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-weight:500;color:var(--text)}
+.s-free{color:var(--green);font-size:12px}
+.s-busy{color:var(--red);font-size:12px}
+.btn-ghost{margin-left:auto;padding:4px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--text3);font-family:inherit;font-size:12px;cursor:pointer;transition:all .15s}
+.btn-ghost:hover{border-color:var(--red);color:var(--red)}
+.add-row{display:flex;gap:8px;margin-top:12px;align-items:center}
+.add-row input[type=time]{flex:1;margin-bottom:0}
+.btn-add{padding:10px 16px;background:var(--gold-dim);border:1px solid rgba(201,168,76,.3);border-radius:var(--r);color:var(--gold);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .15s}
+.btn-add:hover{background:rgba(201,168,76,.25)}
+
+/* Config / setup */
+.step-row{display:flex;gap:12px;margin-bottom:14px;font-size:13px;color:var(--text2);line-height:1.5}
+.step-n{width:22px;height:22px;border-radius:50%;background:var(--gold-dim);border:1px solid rgba(201,168,76,.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--gold);flex-shrink:0}
+code{background:var(--bg3);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--gold-light);font-family:monospace}
+.hint{font-size:12px;color:var(--text3);margin-top:-10px;margin-bottom:14px;line-height:1.5}
+.conn-ok{color:var(--green);font-size:13px;margin-top:10px}
+.conn-err{color:var(--red);font-size:13px;margin-top:10px}
+.divider{height:1px;background:var(--border);margin:1.25rem 0}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading{text-align:center;padding:1.5rem;color:var(--text3);font-size:13px}
+.empty{text-align:center;padding:2rem;color:var(--text3);font-size:13px}
+
+@media(max-width:480px){
+  .biz-name{font-size:1.7rem}
+  .row2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="orn">
+      <div class="orn-line"></div>
+      <div class="orn-d"></div>
+      <div class="orn-line r"></div>
+    </div>
+    <div class="biz-name" id="biz-name">Agendamento</div>
+    <div class="biz-sub">Reserve seu horário online</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('client')">Agendar horário</button>
+    <button class="tab" onclick="switchTab('admin')">Admin</button>
+    <button class="tab" onclick="switchTab('config')">Configuração</button>
+  </div>
+
+  <!-- ── CLIENTE ── -->
+  <div id="tab-client" class="panel active">
+    <div class="card">
+      <div class="card-title">Reserve seu horário</div>
+      <div class="card-sub">Preencha seus dados e escolha um horário disponível</div>
+      <div class="row2">
+        <div><label>Nome completo</label><input id="cl-name" placeholder="Seu nome" autocomplete="name"></div>
+        <div><label>WhatsApp</label><input id="cl-phone" placeholder="(21) 99999-9999" autocomplete="tel"></div>
+      </div>
+      <div class="row2">
+        <div><label>Serviço</label><select id="cl-service"><option value="">Selecione...</option></select></div>
+        <div><label>Data</label><input type="date" id="cl-date" onchange="loadSlots()"></div>
+      </div>
+      <label>Observações (opcional)</label>
+      <textarea id="cl-obs" placeholder="Alguma informação extra..."></textarea>
+    </div>
+    <div class="card">
+      <div class="slots-label">Horários disponíveis</div>
+      <div id="client-slots"><p class="empty">Selecione uma data para ver os horários disponíveis</p></div>
+      <div id="client-selected" style="display:none" class="sel-info"></div>
+    </div>
+    <button class="btn-primary" id="btn-confirm" onclick="confirmBooking()">Confirmar agendamento</button>
+  </div>
+
+  <!-- ── ADMIN ── -->
+  <div id="tab-admin" class="panel">
+    <div id="admin-lock" class="card" style="display:none">
+      <div class="card-title">Acesso restrito</div>
+      <div class="card-sub">Digite a senha de administrador</div>
+      <label>Senha</label>
+      <input type="password" id="admin-pw" placeholder="Senha admin" onkeydown="if(event.key==='Enter')checkPw()">
+      <button class="btn-primary" onclick="checkPw()">Entrar</button>
+      <div id="pw-err" style="color:var(--red);font-size:12px;margin-top:8px;display:none">Senha incorreta</div>
+    </div>
+    <div id="admin-content" style="display:none">
+      <div class="card">
+        <div class="card-title">Agendamentos</div>
+        <div class="card-sub" id="admin-count">Carregando...</div>
+        <div id="admin-list"><div class="loading"><span class="spinner"></span>Carregando...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:4px">Gerenciar horários</div>
+        <div class="card-sub">Configure os horários disponíveis por data</div>
+        <label>Data</label>
+        <input type="date" id="adm-date" onchange="loadAdminSlots()" style="margin-bottom:10px">
+        <div id="admin-slots"><p class="empty">Selecione uma data</p></div>
+        <div class="add-row">
+          <input type="time" id="new-time">
+          <button class="btn-add" onclick="addSlot()">+ Adicionar horário</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONFIG ── -->
+  <div id="tab-config" class="panel">
+    <div class="card">
+      <div class="card-title">Como configurar</div>
+      <div class="card-sub">Siga os passos abaixo uma única vez</div>
+
+      <div class="step-row"><div class="step-n">1</div><div>Crie uma planilha no <strong>Google Sheets</strong> — pode ter qualquer nome</div></div>
+      <div class="step-row"><div class="step-n">2</div><div>Na planilha, vá em <strong>Extensões → Apps Script</strong></div></div>
+      <div class="step-row"><div class="step-n">3</div><div>Apague todo o código que aparecer, cole o código do arquivo <code>apps-script.js</code> e salve (<strong>Ctrl+S</strong>)</div></div>
+      <div class="step-row"><div class="step-n">4</div><div>Clique em <strong>Implantar → Nova implantação</strong> → Tipo: <strong>App da Web</strong> → Executar como: <strong>Eu</strong> → Acesso: <strong>Qualquer pessoa</strong> → Implantar</div></div>
+      <div class="step-row"><div class="step-n">5</div><div>Copie a <strong>URL do Web App</strong> gerada e cole no campo abaixo</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1rem">Suas configurações</div>
+
+      <label>URL do Apps Script (Web App)</label>
+      <input id="cfg-url" placeholder="https://script.google.com/macros/s/XXXXX/exec" oninput="saveConfig()">
+
+      <div class="divider"></div>
+
+      <label>Nome do salão / barbearia</label>
+      <input id="cfg-bizname" placeholder="ex: Barbearia do João" oninput="saveConfig()">
+
+      <label>Serviços (separados por vírgula)</label>
+      <input id="cfg-services" placeholder="ex: Corte, Barba, Coloração" oninput="saveConfig()">
+
+      <div class="divider"></div>
+
+      <label>Seu WhatsApp (DDI + DDD + número, só dígitos)</label>
+      <input id="cfg-whatsapp" placeholder="5521999999999" oninput="saveConfig()">
+      <div class="hint">Brasil = 55 · Rio de Janeiro (21) · Ex: <code>5521999999999</code></div>
+
+      <label>Senha do painel admin</label>
+      <input id="cfg-adminpw" type="password" placeholder="Escolha uma senha" oninput="saveConfig()">
+
+      <div class="divider"></div>
+
+      <button class="btn-primary" onclick="testConnection()">Testar conexão com a planilha</button>
+      <div id="conn-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL WHATSAPP ── -->
+<div id="modal-bd" class="modal-bd">
+  <div class="modal">
+    <div class="modal-check">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4caf81" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </div>
+    <div class="modal-title">Agendamento confirmado!</div>
+    <div class="modal-sub">Seu horário foi reservado na planilha.<br>Envie os detalhes pelo WhatsApp para confirmar.</div>
+    <div class="sum" id="modal-sum"></div>
+    <button class="btn-wa" onclick="openWhatsApp()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      Enviar confirmação pelo WhatsApp
+    </button>
+    <button class="btn-skip" onclick="closeModal()">Fechar sem enviar</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let cfg = { url:'', bizname:'', services:['Corte','Barba','Coloração'], whatsapp:'', adminpw:'admin123' };
+let selectedSlot = null;
+let adminUnlocked = false;
+let pendingBooking = null;
+let cachedSlots = [];
+
+/* ── Config ──────────────────────────────── */
+function saveConfig() {
+  cfg.url      = v('cfg-url').trim();
+  cfg.bizname  = v('cfg-bizname').trim();
+  cfg.services = v('cfg-services').split(',').map(s=>s.trim()).filter(Boolean);
+  cfg.whatsapp = v('cfg-whatsapp').replace(/\D/g,'');
+  cfg.adminpw  = v('cfg-adminpw') || 'admin123';
+  try { localStorage.setItem('salon_gs_cfg', JSON.stringify(cfg)); } catch(e){}
+  applyConfig();
 }
 
-function doPost(e) {
-  return handleRequest(e);
-}
-
-function handleRequest(e) {
-  const params = e.parameter || {};
-  const action = params.action;
-  let result;
-
+function loadConfig() {
   try {
-    if (action === "getSlots") {
-      result = getSlots(params.date);
-    } else if (action === "getBookings") {
-      result = getBookings();
-    } else if (action === "addBooking") {
-      result = addBooking(params);
-    } else if (action === "cancelBooking") {
-      result = cancelBooking(params.id);
-    } else if (action === "addSlot") {
-      result = addSlot(params.date, params.time);
-    } else if (action === "removeSlot") {
-      result = removeSlot(params.date, params.time);
+    const s = localStorage.getItem('salon_gs_cfg');
+    if (s) {
+      cfg = {...cfg, ...JSON.parse(s)};
+      set('cfg-url',      cfg.url);
+      set('cfg-bizname',  cfg.bizname);
+      set('cfg-services', (cfg.services||[]).join(', '));
+      set('cfg-whatsapp', cfg.whatsapp);
+      set('cfg-adminpw',  cfg.adminpw);
+    }
+  } catch(e){}
+}
+
+function applyConfig() {
+  el('biz-name').textContent = cfg.bizname || 'Agendamento';
+  const sel = el('cl-service');
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  (cfg.services.length ? cfg.services : ['Serviço']).forEach(s => sel.innerHTML += `<option>${s}</option>`);
+}
+
+/* ── API call ────────────────────────────── */
+async function api(params) {
+  if (!cfg.url) throw new Error('URL do Apps Script não configurada');
+  const qs = new URLSearchParams(params).toString();
+  const r = await fetch(cfg.url + '?' + qs);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const json = await r.json();
+  if (!json.ok) throw new Error(json.error || 'Erro desconhecido');
+  return json;
+}
+
+/* ── Test ────────────────────────────────── */
+async function testConnection() {
+  const btn = event.target; btn.disabled = true; btn.textContent = 'Testando...';
+  const st = el('conn-status');
+  if (!cfg.url) {
+    st.innerHTML = '<div class="conn-err">Cole a URL do Apps Script primeiro</div>';
+    btn.disabled = false; btn.textContent = 'Testar conexão com a planilha'; return;
+  }
+  try {
+    await api({ action:'getBookings' });
+    st.innerHTML = '<div class="conn-ok">Conectado! Planilha pronta para uso.</div>';
+    toast('Google Sheets conectado!', 'ok');
+  } catch(e) {
+    st.innerHTML = '<div class="conn-err">Erro: ' + e.message + '</div>';
+  }
+  btn.disabled = false; btn.textContent = 'Testar conexão com a planilha';
+}
+
+/* ── Slots (cliente) ─────────────────────── */
+async function loadSlots() {
+  const d = v('cl-date');
+  const container = el('client-slots');
+  selectedSlot = null;
+  el('client-selected').style.display = 'none';
+  if (!d) { container.innerHTML = '<p class="empty">Selecione uma data</p>'; return; }
+  container.innerHTML = '<div class="loading"><span class="spinner"></span>Verificando horários...</div>';
+  try {
+    const res = await api({ action:'getSlots', date:d });
+    cachedSlots = res.slots || [];
+    if (!cachedSlots.length) { container.innerHTML = '<p class="empty">Nenhum horário disponível para esta data</p>'; return; }
+    container.innerHTML = '<div class="slots-grid">' + cachedSlots.map(s => {
+      const occ = !s.available;
+      return `<div class="slot${occ?' booked':''}" onclick="${occ?'':'selectSlot(\''+s.time+'\',\''+d+'\')'}">
+        ${s.time}${occ?'<br><span style="font-size:10px">Ocupado</span>':''}
+      </div>`;
+    }).join('') + '</div>';
+  } catch(e) {
+    container.innerHTML = '<p class="empty">Erro: ' + e.message + '. Configure a URL do Apps Script.</p>';
+  }
+}
+
+function selectSlot(time, date) {
+  selectedSlot = { time, date };
+  document.querySelectorAll('.slot').forEach(s => s.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  const dt = new Date(date+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  const info = el('client-selected');
+  info.style.display = 'block';
+  info.textContent = 'Selecionado: ' + time + ' — ' + dt;
+}
+
+/* ── Confirmar agendamento ───────────────── */
+async function confirmBooking() {
+  const name    = v('cl-name').trim();
+  const phone   = v('cl-phone').trim();
+  const service = v('cl-service');
+  const obs     = v('cl-obs').trim();
+  if (!name)         { toast('Informe seu nome', 'err'); return; }
+  if (!phone)        { toast('Informe o WhatsApp', 'err'); return; }
+  if (!service)      { toast('Selecione um serviço', 'err'); return; }
+  if (!selectedSlot) { toast('Selecione um horário', 'err'); return; }
+
+  const btn = el('btn-confirm');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    const res = await api({ action:'addBooking', name, phone, service, date:selectedSlot.date, time:selectedSlot.time, obs });
+    const booking = { id:res.id, name, phone, service, date:selectedSlot.date, time:selectedSlot.time, obs };
+    pendingBooking = booking;
+    set('cl-name',''); set('cl-phone',''); el('cl-service').value=''; set('cl-obs','');
+    el('client-selected').style.display='none';
+    selectedSlot = null;
+    await loadSlots();
+    showModal(booking);
+  } catch(e) {
+    if (e.message.includes('já reservado')) {
+      toast('Horário já foi ocupado! Escolha outro.', 'err');
+      await loadSlots();
     } else {
-      result = { ok: false, error: "Ação desconhecida: " + action };
-    }
-  } catch (err) {
-    result = { ok: false, error: err.toString() };
-  }
-
-  return ContentService
-    .createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-// ── Inicializa abas se não existirem ──────────────────────
-function ensureSheets() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  let shAg = ss.getSheetByName(SHEET_AGENDAMENTOS);
-  if (!shAg) {
-    shAg = ss.insertSheet(SHEET_AGENDAMENTOS);
-    shAg.appendRow(["ID", "Nome", "Telefone", "Servico", "Data", "Horario", "Obs", "CriadoEm"]);
-    shAg.setFrozenRows(1);
-  }
-
-  let shHo = ss.getSheetByName(SHEET_HORARIOS);
-  if (!shHo) {
-    shHo = ss.insertSheet(SHEET_HORARIOS);
-    shHo.appendRow(["Data", "Horario"]);
-    shHo.setFrozenRows(1);
-  }
-
-  return { shAg, shHo };
-}
-
-// ── Buscar horários disponíveis por data ──────────────────
-function getSlots(date) {
-  const { shAg, shHo } = ensureSheets();
-
-  // Todos os horários cadastrados para a data
-  const hoData = shHo.getDataRange().getValues();
-  const allSlots = hoData.slice(1)
-    .filter(r => String(r[0]).trim() === String(date).trim())
-    .map(r => String(r[1]).trim())
-    .filter(Boolean);
-
-  // Horários já reservados na data
-  const agData = shAg.getDataRange().getValues();
-  const booked = agData.slice(1)
-    .filter(r => String(r[4]).trim() === String(date).trim())
-    .map(r => String(r[5]).trim());
-
-  const slots = allSlots.map(t => ({
-    time: t,
-    available: !booked.includes(t)
-  }));
-
-  return { ok: true, slots };
-}
-
-// ── Buscar todos os agendamentos ──────────────────────────
-function getBookings() {
-  const { shAg } = ensureSheets();
-  const rows = shAg.getDataRange().getValues();
-  const bookings = rows.slice(1)
-    .filter(r => r[0])
-    .map(r => ({
-      id:        String(r[0]),
-      name:      r[1],
-      phone:     r[2],
-      service:   r[3],
-      date:      r[4],
-      time:      r[5],
-      obs:       r[6],
-      createdAt: r[7]
-    }))
-    .sort((a, b) => (a.date + a.time) > (b.date + b.time) ? 1 : -1);
-
-  return { ok: true, bookings };
-}
-
-// ── Adicionar agendamento ─────────────────────────────────
-function addBooking(p) {
-  const { shAg } = ensureSheets();
-
-  // Verificar conflito
-  const rows = shAg.getDataRange().getValues();
-  const conflict = rows.slice(1).find(r =>
-    String(r[4]).trim() === String(p.date).trim() &&
-    String(r[5]).trim() === String(p.time).trim()
-  );
-  if (conflict) {
-    return { ok: false, error: "Horário já reservado" };
-  }
-
-  const id = Date.now().toString();
-  shAg.appendRow([id, p.name, p.phone, p.service, p.date, p.time, p.obs || "", new Date().toISOString()]);
-  return { ok: true, id };
-}
-
-// ── Cancelar agendamento ──────────────────────────────────
-function cancelBooking(id) {
-  const { shAg } = ensureSheets();
-  const rows = shAg.getDataRange().getValues();
-  for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][0]) === String(id)) {
-      shAg.deleteRow(i + 1);
-      return { ok: true };
+      toast('Erro: ' + e.message, 'err');
     }
   }
-  return { ok: false, error: "Agendamento não encontrado" };
+  btn.disabled = false; btn.textContent = 'Confirmar agendamento';
 }
 
-// ── Adicionar horário disponível ──────────────────────────
-function addSlot(date, time) {
-  const { shHo } = ensureSheets();
-  const rows = shHo.getDataRange().getValues();
-  const exists = rows.slice(1).find(r =>
-    String(r[0]).trim() === String(date).trim() &&
-    String(r[1]).trim() === String(time).trim()
-  );
-  if (exists) return { ok: false, error: "Horário já existe" };
-  shHo.appendRow([date, time]);
-  return { ok: true };
+/* ── Modal WhatsApp ──────────────────────── */
+function showModal(b) {
+  const dt = new Date(b.date+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  el('modal-sum').innerHTML = `
+    <div class="sum-row"><span>Cliente</span><span>${b.name}</span></div>
+    <div class="sum-row"><span>WhatsApp</span><span>${b.phone}</span></div>
+    <div class="sum-row"><span>Serviço</span><span>${b.service}</span></div>
+    <div class="sum-row"><span>Data</span><span>${dt}</span></div>
+    <div class="sum-row"><span>Horário</span><span>${b.time}</span></div>
+    ${b.obs?`<div class="sum-row"><span>Obs</span><span>${b.obs}</span></div>`:''}
+  `;
+  el('modal-bd').classList.add('show');
 }
 
-// ── Remover horário disponível ────────────────────────────
-function removeSlot(date, time) {
-  const { shHo } = ensureSheets();
-  const rows = shHo.getDataRange().getValues();
-  for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][0]).trim() === String(date).trim() &&
-        String(rows[i][1]).trim() === String(time).trim()) {
-      shHo.deleteRow(i + 1);
-      return { ok: true };
-    }
+function openWhatsApp() {
+  const b = pendingBooking; if (!b) return;
+  const dt = new Date(b.date+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  const biz = cfg.bizname || 'o estabelecimento';
+  const msg = `Olá! Acabei de agendar um horário em *${biz}*.\n\n` +
+    `*Nome:* ${b.name}\n*Serviço:* ${b.service}\n*Data:* ${dt}\n*Horário:* ${b.time}\n` +
+    (b.obs?`*Obs:* ${b.obs}\n`:'') +
+    `\nPor favor, confirme meu agendamento!`;
+  window.open(`https://wa.me/${cfg.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+  closeModal();
+}
+
+function closeModal() {
+  el('modal-bd').classList.remove('show');
+  pendingBooking = null;
+}
+
+/* ── Admin ───────────────────────────────── */
+function checkPw() {
+  if (v('admin-pw') === cfg.adminpw) {
+    adminUnlocked = true;
+    el('admin-lock').style.display='none';
+    el('admin-content').style.display='block';
+    loadAdminData();
+    el('pw-err').style.display='none';
+  } else {
+    el('pw-err').style.display='block';
   }
-  return { ok: false, error: "Horário não encontrado" };
 }
+
+async function loadAdminData() {
+  el('admin-list').innerHTML = '<div class="loading"><span class="spinner"></span>Carregando...</div>';
+  try {
+    const res = await api({ action:'getBookings' });
+    renderBookings(res.bookings || []);
+    await loadAdminSlots();
+  } catch(e) {
+    el('admin-list').innerHTML = '<p class="empty">Erro: ' + e.message + '</p>';
+  }
+}
+
+function renderBookings(list) {
+  const container = el('admin-list');
+  el('admin-count').textContent = list.length ? list.length + ' agendamento(s) na planilha' : 'Nenhum agendamento ainda';
+  if (!list.length) { container.innerHTML='<p class="empty">Nenhum agendamento ainda</p>'; return; }
+  container.innerHTML = list.map(b => {
+    const dt = new Date(b.date+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+    const waNum = b.phone.replace(/\D/g,'');
+    const msg = `Olá ${b.name}! Confirmando seu *${b.service}* em ${dt} às ${b.time}. Te esperamos!`;
+    return `<div class="booking-item">
+      <div class="avatar">${b.name.charAt(0).toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div class="b-name">${b.name}</div>
+        <div class="b-meta"><span class="b-tag">${b.service}</span>${dt} às ${b.time}</div>
+        <div class="b-meta">${b.phone}${b.obs?' · '+b.obs:''}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:flex-end">
+        <a class="btn-wa-sm" href="https://wa.me/${waNum}?text=${encodeURIComponent(msg)}" target="_blank">WhatsApp</a>
+        <button class="btn-cancel" onclick="cancelBooking('${b.id}')">Cancelar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function cancelBooking(id) {
+  try {
+    await api({ action:'cancelBooking', id });
+    toast('Agendamento cancelado', 'ok');
+    await loadAdminData();
+  } catch(e) { toast('Erro: ' + e.message, 'err'); }
+}
+
+async function loadAdminSlots() {
+  const d = v('adm-date');
+  const container = el('admin-slots');
+  if (!d) { container.innerHTML='<p class="empty">Selecione uma data</p>'; return; }
+  try {
+    const res = await api({ action:'getSlots', date:d });
+    const slots = res.slots || [];
+    if (!slots.length) { container.innerHTML='<p class="empty">Nenhum horário cadastrado. Adicione abaixo.</p>'; return; }
+    container.innerHTML = slots.map(s => `
+      <div class="slot-row">
+        <span class="slot-badge">${s.time}</span>
+        <span>${s.available ? '<span class="s-free">Disponível</span>' : '<span class="s-busy">Ocupado</span>'}</span>
+        ${s.available ? `<button class="btn-ghost" onclick="removeSlot('${d}','${s.time}')">Remover</button>` : ''}
+      </div>`).join('');
+  } catch(e) {
+    container.innerHTML = '<p class="empty">Erro: ' + e.message + '</p>';
+  }
+}
+
+async function addSlot() {
+  const d = v('adm-date'), t = v('new-time');
+  if (!d || !t) { toast('Selecione data e horário', 'err'); return; }
+  try {
+    await api({ action:'addSlot', date:d, time:t });
+    toast('Horário ' + t + ' adicionado!', 'ok');
+    await loadAdminSlots();
+  } catch(e) { toast('Erro: ' + e.message, 'err'); }
+}
+
+async function removeSlot(d, t) {
+  try {
+    await api({ action:'removeSlot', date:d, time:t });
+    toast('Horário removido', 'ok');
+    await loadAdminSlots();
+  } catch(e) { toast('Erro: ' + e.message, 'err'); }
+}
+
+/* ── Tabs ────────────────────────────────── */
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${t}')"]`).classList.add('active');
+  el('tab-'+t).classList.add('active');
+  if (t === 'admin') {
+    if (!cfg.url) { toast('Configure a URL do Apps Script primeiro', 'err'); switchTab('config'); return; }
+    if (!adminUnlocked) { el('admin-lock').style.display='block'; el('admin-content').style.display='none'; }
+    else loadAdminData();
+  }
+  if (t === 'client') {
+    applyConfig();
+    el('cl-date').value = new Date().toISOString().split('T')[0];
+    loadSlots();
+  }
+}
+
+/* ── Toast / helpers ─────────────────────── */
+function toast(msg, type='') {
+  const t = el('toast');
+  t.textContent = msg; t.className = 'toast show'+(type?' '+type:'');
+  setTimeout(() => t.className = 'toast', 2800);
+}
+function el(id) { return document.getElementById(id); }
+function v(id)  { return el(id).value; }
+function set(id, val) { el(id).value = val; }
+
+/* ── Init ────────────────────────────────── */
+loadConfig(); applyConfig();
+el('cl-date').value  = new Date().toISOString().split('T')[0];
+el('adm-date').value = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>

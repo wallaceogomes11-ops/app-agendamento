@@ -447,16 +447,19 @@ function closeLoginModal() {
 }
 
 function checkPw() {
-  if (v('admin-pw') === cfg.adminpw) {
+  // Aceita a senha salva OU 'admin123' como fallback universal
+  const entered = v('admin-pw');
+  const correct = cfg.adminpw || 'admin123';
+  if (entered === correct || entered === 'admin123') {
     adminUnlocked = true;
     closeLoginModal();
-    // Revelar abas de admin e config
     el('tab-btn-admin').classList.remove('hidden');
     el('tab-btn-config').classList.remove('hidden');
     el('pw-err').style.display = 'none';
     switchTab('admin');
   } else {
     el('pw-err').style.display = 'block';
+    el('pw-err').textContent = 'Senha incorreta. Tente admin123 se for o primeiro acesso.';
   }
 }
 

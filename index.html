@@ -29,6 +29,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .tabs{display:flex;gap:2px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:4px;margin-bottom:2rem}
 .tab{flex:1;padding:9px 12px;border:none;border-radius:8px;background:transparent;color:var(--text2);font-family:inherit;font-size:13px;cursor:pointer;transition:all .2s}
 .tab.active{background:var(--bg3);color:var(--gold);font-weight:500}
+.tab.hidden{display:none}
 .panel{display:none}.panel.active{display:block}
 
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:1.5rem;margin-bottom:1rem}
@@ -57,7 +58,6 @@ textarea{resize:vertical;min-height:72px}
 .btn-primary:hover{background:var(--gold-light)}
 .btn-primary:disabled{background:#3a3220;color:#5a4e30;cursor:not-allowed}
 
-/* Modal */
 .modal-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center;padding:1rem}
 .modal-bd.show{display:flex}
 .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);padding:2rem;max-width:420px;width:100%;text-align:center}
@@ -101,7 +101,6 @@ textarea{resize:vertical;min-height:72px}
 .btn-add{padding:10px 16px;background:var(--gold-dim);border:1px solid rgba(201,168,76,.3);border-radius:var(--r);color:var(--gold);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .15s}
 .btn-add:hover{background:rgba(201,168,76,.25)}
 
-/* Config / setup */
 .step-row{display:flex;gap:12px;margin-bottom:14px;font-size:13px;color:var(--text2);line-height:1.5}
 .step-n{width:22px;height:22px;border-radius:50%;background:var(--gold-dim);border:1px solid rgba(201,168,76,.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--gold);flex-shrink:0}
 code{background:var(--bg3);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--gold-light);font-family:monospace}
@@ -114,6 +113,19 @@ code{background:var(--bg3);border:1px solid var(--border);padding:2px 6px;border
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading{text-align:center;padding:1.5rem;color:var(--text3);font-size:13px}
 .empty{text-align:center;padding:2rem;color:var(--text3);font-size:13px}
+
+/* Link discreto no rodapé para login admin */
+.admin-link{text-align:center;margin-top:2.5rem}
+.admin-link button{background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:4px 8px;border-radius:4px;transition:color .15s;font-family:inherit}
+.admin-link button:hover{color:var(--text2)}
+
+/* Modal de login */
+.login-modal-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.login-modal-bd.show{display:flex}
+.login-modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);padding:2rem;max-width:360px;width:100%}
+
+.btn-logout{width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--r);background:transparent;color:var(--text3);font-family:inherit;font-size:13px;cursor:pointer;margin-top:8px;transition:all .15s}
+.btn-logout:hover{border-color:var(--red);color:var(--red)}
 
 @media(max-width:480px){
   .biz-name{font-size:1.7rem}
@@ -134,10 +146,11 @@ code{background:var(--bg3);border:1px solid var(--border);padding:2px 6px;border
     <div class="biz-sub">Reserve seu horário online</div>
   </div>
 
+  <!-- Tabs: Admin e Config ficam ocultas até autenticação -->
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('client')">Agendar horário</button>
-    <button class="tab" onclick="switchTab('admin')">Admin</button>
-    <button class="tab" onclick="switchTab('config')">Configuração</button>
+    <button class="tab active" id="tab-btn-client" onclick="switchTab('client')">Agendar horário</button>
+    <button class="tab hidden" id="tab-btn-admin" onclick="switchTab('admin')">Admin</button>
+    <button class="tab hidden" id="tab-btn-config" onclick="switchTab('config')">Configuração</button>
   </div>
 
   <!-- ── CLIENTE ── -->
@@ -166,32 +179,23 @@ code{background:var(--bg3);border:1px solid var(--border);padding:2px 6px;border
 
   <!-- ── ADMIN ── -->
   <div id="tab-admin" class="panel">
-    <div id="admin-lock" class="card" style="display:none">
-      <div class="card-title">Acesso restrito</div>
-      <div class="card-sub">Digite a senha de administrador</div>
-      <label>Senha</label>
-      <input type="password" id="admin-pw" placeholder="Senha admin" onkeydown="if(event.key==='Enter')checkPw()">
-      <button class="btn-primary" onclick="checkPw()">Entrar</button>
-      <div id="pw-err" style="color:var(--red);font-size:12px;margin-top:8px;display:none">Senha incorreta</div>
+    <div class="card">
+      <div class="card-title">Agendamentos</div>
+      <div class="card-sub" id="admin-count">Carregando...</div>
+      <div id="admin-list"><div class="loading"><span class="spinner"></span>Carregando...</div></div>
     </div>
-    <div id="admin-content" style="display:none">
-      <div class="card">
-        <div class="card-title">Agendamentos</div>
-        <div class="card-sub" id="admin-count">Carregando...</div>
-        <div id="admin-list"><div class="loading"><span class="spinner"></span>Carregando...</div></div>
-      </div>
-      <div class="card">
-        <div class="card-title" style="margin-bottom:4px">Gerenciar horários</div>
-        <div class="card-sub">Configure os horários disponíveis por data</div>
-        <label>Data</label>
-        <input type="date" id="adm-date" onchange="loadAdminSlots()" style="margin-bottom:10px">
-        <div id="admin-slots"><p class="empty">Selecione uma data</p></div>
-        <div class="add-row">
-          <input type="time" id="new-time">
-          <button class="btn-add" onclick="addSlot()">+ Adicionar horário</button>
-        </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:4px">Gerenciar horários</div>
+      <div class="card-sub">Configure os horários disponíveis por data</div>
+      <label>Data</label>
+      <input type="date" id="adm-date" onchange="loadAdminSlots()" style="margin-bottom:10px">
+      <div id="admin-slots"><p class="empty">Selecione uma data</p></div>
+      <div class="add-row">
+        <input type="time" id="new-time">
+        <button class="btn-add" onclick="addSlot()">+ Adicionar horário</button>
       </div>
     </div>
+    <button class="btn-logout" onclick="adminLogout()">Sair do painel admin</button>
   </div>
 
   <!-- ── CONFIG ── -->
@@ -199,42 +203,37 @@ code{background:var(--bg3);border:1px solid var(--border);padding:2px 6px;border
     <div class="card">
       <div class="card-title">Como configurar</div>
       <div class="card-sub">Siga os passos abaixo uma única vez</div>
-
       <div class="step-row"><div class="step-n">1</div><div>Crie uma planilha no <strong>Google Sheets</strong> — pode ter qualquer nome</div></div>
       <div class="step-row"><div class="step-n">2</div><div>Na planilha, vá em <strong>Extensões → Apps Script</strong></div></div>
       <div class="step-row"><div class="step-n">3</div><div>Apague todo o código que aparecer, cole o código do arquivo <code>apps-script.js</code> e salve (<strong>Ctrl+S</strong>)</div></div>
       <div class="step-row"><div class="step-n">4</div><div>Clique em <strong>Implantar → Nova implantação</strong> → Tipo: <strong>App da Web</strong> → Executar como: <strong>Eu</strong> → Acesso: <strong>Qualquer pessoa</strong> → Implantar</div></div>
       <div class="step-row"><div class="step-n">5</div><div>Copie a <strong>URL do Web App</strong> gerada e cole no campo abaixo</div></div>
     </div>
-
     <div class="card">
       <div class="card-title" style="margin-bottom:1rem">Suas configurações</div>
-
       <label>URL do Apps Script (Web App)</label>
       <input id="cfg-url" placeholder="https://script.google.com/macros/s/XXXXX/exec" oninput="saveConfig()">
-
       <div class="divider"></div>
-
       <label>Nome do salão / barbearia</label>
       <input id="cfg-bizname" placeholder="ex: Barbearia do João" oninput="saveConfig()">
-
       <label>Serviços (separados por vírgula)</label>
       <input id="cfg-services" placeholder="ex: Corte, Barba, Coloração" oninput="saveConfig()">
-
       <div class="divider"></div>
-
       <label>Seu WhatsApp (DDI + DDD + número, só dígitos)</label>
       <input id="cfg-whatsapp" placeholder="5521999999999" oninput="saveConfig()">
       <div class="hint">Brasil = 55 · Rio de Janeiro (21) · Ex: <code>5521999999999</code></div>
-
       <label>Senha do painel admin</label>
       <input id="cfg-adminpw" type="password" placeholder="Escolha uma senha" oninput="saveConfig()">
-
       <div class="divider"></div>
-
       <button class="btn-primary" onclick="testConnection()">Testar conexão com a planilha</button>
       <div id="conn-status"></div>
     </div>
+    <button class="btn-logout" onclick="adminLogout()">Sair do painel admin</button>
+  </div>
+
+  <!-- Link oculto no rodapé para acessar o painel admin -->
+  <div class="admin-link">
+    <button onclick="openLoginModal()" title="Acesso administrativo">⚙</button>
   </div>
 </div>
 
@@ -255,6 +254,19 @@ code{background:var(--bg3);border:1px solid var(--border);padding:2px 6px;border
   </div>
 </div>
 
+<!-- ── MODAL LOGIN ADMIN ── -->
+<div id="login-modal-bd" class="login-modal-bd">
+  <div class="login-modal">
+    <div class="card-title" style="margin-bottom:4px">Acesso restrito</div>
+    <div class="card-sub" style="margin-bottom:1.25rem">Digite a senha de administrador</div>
+    <label>Senha</label>
+    <input type="password" id="admin-pw" placeholder="Senha admin" onkeydown="if(event.key==='Enter')checkPw()">
+    <button class="btn-primary" onclick="checkPw()">Entrar</button>
+    <div id="pw-err" style="color:var(--red);font-size:12px;margin-top:8px;display:none">Senha incorreta</div>
+    <button class="btn-skip" style="margin-top:10px" onclick="closeLoginModal()">Cancelar</button>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script>
@@ -264,7 +276,7 @@ let adminUnlocked = false;
 let pendingBooking = null;
 let cachedSlots = [];
 
-/* ── Config ──────────────────────────────── */
+/* ── Config ─────────────────────────────── */
 function saveConfig() {
   cfg.url      = v('cfg-url').trim();
   cfg.bizname  = v('cfg-bizname').trim();
@@ -296,7 +308,7 @@ function applyConfig() {
   (cfg.services.length ? cfg.services : ['Serviço']).forEach(s => sel.innerHTML += `<option>${s}</option>`);
 }
 
-/* ── API call ────────────────────────────── */
+/* ── API ─────────────────────────────────── */
 async function api(params) {
   if (!cfg.url) throw new Error('URL do Apps Script não configurada');
   const qs = new URLSearchParams(params).toString();
@@ -307,7 +319,7 @@ async function api(params) {
   return json;
 }
 
-/* ── Test ────────────────────────────────── */
+/* ── Conexão ─────────────────────────────── */
 async function testConnection() {
   const btn = event.target; btn.disabled = true; btn.textContent = 'Testando...';
   const st = el('conn-status');
@@ -358,7 +370,7 @@ function selectSlot(time, date) {
   info.textContent = 'Selecionado: ' + time + ' — ' + dt;
 }
 
-/* ── Confirmar agendamento ───────────────── */
+/* ── Confirmar agendamento ──────────────── */
 async function confirmBooking() {
   const name    = v('cl-name').trim();
   const phone   = v('cl-phone').trim();
@@ -391,7 +403,7 @@ async function confirmBooking() {
   btn.disabled = false; btn.textContent = 'Confirmar agendamento';
 }
 
-/* ── Modal WhatsApp ──────────────────────── */
+/* ── Modal WhatsApp ─────────────────────── */
 function showModal(b) {
   const dt = new Date(b.date+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   el('modal-sum').innerHTML = `
@@ -422,19 +434,41 @@ function closeModal() {
   pendingBooking = null;
 }
 
-/* ── Admin ───────────────────────────────── */
+/* ── Login Modal ────────────────────────── */
+function openLoginModal() {
+  el('login-modal-bd').classList.add('show');
+  el('admin-pw').value = '';
+  el('pw-err').style.display = 'none';
+  setTimeout(() => el('admin-pw').focus(), 80);
+}
+
+function closeLoginModal() {
+  el('login-modal-bd').classList.remove('show');
+}
+
 function checkPw() {
   if (v('admin-pw') === cfg.adminpw) {
     adminUnlocked = true;
-    el('admin-lock').style.display='none';
-    el('admin-content').style.display='block';
-    loadAdminData();
-    el('pw-err').style.display='none';
+    closeLoginModal();
+    // Revelar abas de admin e config
+    el('tab-btn-admin').classList.remove('hidden');
+    el('tab-btn-config').classList.remove('hidden');
+    el('pw-err').style.display = 'none';
+    switchTab('admin');
   } else {
-    el('pw-err').style.display='block';
+    el('pw-err').style.display = 'block';
   }
 }
 
+function adminLogout() {
+  adminUnlocked = false;
+  el('tab-btn-admin').classList.add('hidden');
+  el('tab-btn-config').classList.add('hidden');
+  switchTab('client');
+  toast('Sessão encerrada', 'ok');
+}
+
+/* ── Admin ──────────────────────────────── */
 async function loadAdminData() {
   el('admin-list').innerHTML = '<div class="loading"><span class="spinner"></span>Carregando...</div>';
   try {
@@ -514,16 +548,16 @@ async function removeSlot(d, t) {
   } catch(e) { toast('Erro: ' + e.message, 'err'); }
 }
 
-/* ── Tabs ────────────────────────────────── */
+/* ── Tabs ───────────────────────────────── */
 function switchTab(t) {
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelector(`[onclick="switchTab('${t}')"]`).classList.add('active');
+  el('tab-btn-'+t).classList.add('active');
   el('tab-'+t).classList.add('active');
   if (t === 'admin') {
     if (!cfg.url) { toast('Configure a URL do Apps Script primeiro', 'err'); switchTab('config'); return; }
-    if (!adminUnlocked) { el('admin-lock').style.display='block'; el('admin-content').style.display='none'; }
-    else loadAdminData();
+    el('adm-date').value = new Date().toISOString().split('T')[0];
+    loadAdminData();
   }
   if (t === 'client') {
     applyConfig();
@@ -532,7 +566,7 @@ function switchTab(t) {
   }
 }
 
-/* ── Toast / helpers ─────────────────────── */
+/* ── Toast / helpers ────────────────────── */
 function toast(msg, type='') {
   const t = el('toast');
   t.textContent = msg; t.className = 'toast show'+(type?' '+type:'');
@@ -542,10 +576,12 @@ function el(id) { return document.getElementById(id); }
 function v(id)  { return el(id).value; }
 function set(id, val) { el(id).value = val; }
 
-/* ── Init ────────────────────────────────── */
-loadConfig(); applyConfig();
-el('cl-date').value  = new Date().toISOString().split('T')[0];
+/* ── Init ───────────────────────────────── */
+loadConfig();
+applyConfig();
+el('cl-date').value = new Date().toISOString().split('T')[0];
 el('adm-date').value = new Date().toISOString().split('T')[0];
+loadSlots();
 </script>
 </body>
 </html>

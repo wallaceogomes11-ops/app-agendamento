@@ -223,7 +223,13 @@ code{background:var(--bg3);border:1px solid var(--border);padding:2px 6px;border
       <input id="cfg-whatsapp" placeholder="5521999999999" oninput="saveConfig()">
       <div class="hint">Brasil = 55 · Rio de Janeiro (21) · Ex: <code>5521999999999</code></div>
       <label>Senha do painel admin</label>
-      <input id="cfg-adminpw" type="password" placeholder="Escolha uma senha" oninput="saveConfig()">
+      <div id="pw-set-area">
+        <div id="pw-status" style="font-size:13px;color:var(--text2);margin-bottom:10px"></div>
+        <input type="password" id="cfg-adminpw-new" placeholder="Nova senha">
+        <input type="password" id="cfg-adminpw-confirm" placeholder="Confirmar nova senha">
+        <button class="btn-primary" style="margin-bottom:14px" onclick="changeAdminPassword()">Salvar nova senha</button>
+        <div id="pw-change-msg" style="font-size:12px;margin-top:-10px;margin-bottom:14px;display:none"></div>
+      </div>
       <div class="divider"></div>
       <button class="btn-primary" onclick="testConnection()">Testar conexão com a planilha</button>
       <div id="conn-status"></div>
@@ -257,20 +263,37 @@ code{background:var(--bg3);border:1px solid var(--border);padding:2px 6px;border
 <!-- ── MODAL LOGIN ADMIN ── -->
 <div id="login-modal-bd" class="login-modal-bd">
   <div class="login-modal">
-    <div class="card-title" style="margin-bottom:4px">Acesso restrito</div>
-    <div class="card-sub" style="margin-bottom:1.25rem">Digite a senha de administrador</div>
-    <label>Senha</label>
-    <input type="password" id="admin-pw" placeholder="Senha admin" onkeydown="if(event.key==='Enter')checkPw()">
-    <button class="btn-primary" onclick="checkPw()">Entrar</button>
-    <div id="pw-err" style="color:var(--red);font-size:12px;margin-top:8px;display:none">Senha incorreta</div>
-    <button class="btn-skip" style="margin-top:10px" onclick="closeLoginModal()">Cancelar</button>
+    <!-- Sem senha cadastrada -->
+    <div id="login-nopass">
+      <div class="card-title" style="margin-bottom:4px">Painel Admin</div>
+      <div class="card-sub" style="margin-bottom:1.25rem">Nenhuma senha cadastrada. Entre diretamente ou defina uma senha agora.</div>
+      <button class="btn-primary" onclick="enterAdmin()">Entrar sem senha</button>
+      <div style="margin-top:14px">
+        <label>Ou defina uma senha agora (opcional)</label>
+        <input type="password" id="new-pw-1" placeholder="Nova senha">
+        <input type="password" id="new-pw-2" placeholder="Confirmar senha" onkeydown="if(event.key==='Enter')setFirstPassword()">
+        <button class="btn-primary" onclick="setFirstPassword()">Definir senha e entrar</button>
+        <div id="new-pw-err" style="color:var(--red);font-size:12px;margin-top:6px;display:none"></div>
+      </div>
+      <button class="btn-skip" style="margin-top:10px" onclick="closeLoginModal()">Cancelar</button>
+    </div>
+    <!-- Com senha cadastrada -->
+    <div id="login-withpass" style="display:none">
+      <div class="card-title" style="margin-bottom:4px">Acesso restrito</div>
+      <div class="card-sub" style="margin-bottom:1.25rem">Digite a senha de administrador</div>
+      <label>Senha</label>
+      <input type="password" id="admin-pw" placeholder="Senha admin" onkeydown="if(event.key==='Enter')checkPw()">
+      <button class="btn-primary" onclick="checkPw()">Entrar</button>
+      <div id="pw-err" style="color:var(--red);font-size:12px;margin-top:8px;display:none">Senha incorreta</div>
+      <button class="btn-skip" style="margin-top:10px" onclick="closeLoginModal()">Cancelar</button>
+    </div>
   </div>
 </div>
 
 <div id="toast" class="toast"></div>
 
 <script>
-let cfg = { url:'', bizname:'', services:['Corte','Barba','Coloração'], whatsapp:'', adminpw:'admin123' };
+let cfg = { url:'', bizname:'', services:['Corte','Barba','Coloração'], whatsapp:'', adminpw:'' };
 let selectedSlot = null;
 let adminUnlocked = false;
 let pendingBooking = null;
@@ -282,7 +305,7 @@ function saveConfig() {
   cfg.bizname  = v('cfg-bizname').trim();
   cfg.services = v('cfg-services').split(',').map(s=>s.trim()).filter(Boolean);
   cfg.whatsapp = v('cfg-whatsapp').replace(/\D/g,'');
-  cfg.adminpw  = v('cfg-adminpw') || 'admin123';
+  // senha gerenciada separadamente
   try { localStorage.setItem('salon_gs_cfg', JSON.stringify(cfg)); } catch(e){}
   applyConfig();
 }
@@ -296,7 +319,7 @@ function loadConfig() {
       set('cfg-bizname',  cfg.bizname);
       set('cfg-services', (cfg.services||[]).join(', '));
       set('cfg-whatsapp', cfg.whatsapp);
-      set('cfg-adminpw',  cfg.adminpw);
+      // senha não carregada no campo por segurança
     }
   } catch(e){}
 }
@@ -435,22 +458,46 @@ function closeModal() {
 }
 
 /* ── Login Modal ────────────────────────── */
-function openLoginModal() {
-  el('login-modal-bd').classList.add('show');
-  el('admin-pw').value = '';
-  el('pw-err').style.display = 'none';
-  setTimeout(() => el('admin-pw').focus(), 80);
-}
+
 
 function closeLoginModal() {
   el('login-modal-bd').classList.remove('show');
 }
 
+function openLoginModal() {
+  // Mostra tela sem senha ou com senha dependendo do estado
+  if (cfg.adminpw) {
+    el('login-nopass').style.display = 'none';
+    el('login-withpass').style.display = 'block';
+    setTimeout(() => el('admin-pw').focus(), 80);
+  } else {
+    el('login-nopass').style.display = 'block';
+    el('login-withpass').style.display = 'none';
+  }
+  el('login-modal-bd').classList.add('show');
+}
+
+function enterAdmin() {
+  adminUnlocked = true;
+  closeLoginModal();
+  el('tab-btn-admin').classList.remove('hidden');
+  el('tab-btn-config').classList.remove('hidden');
+  switchTab('admin');
+}
+
+function setFirstPassword() {
+  const p1 = v('new-pw-1'), p2 = v('new-pw-2');
+  const err = el('new-pw-err');
+  if (!p1) { err.style.display='block'; err.textContent='Digite uma senha'; return; }
+  if (p1 !== p2) { err.style.display='block'; err.textContent='As senhas não conferem'; return; }
+  cfg.adminpw = p1;
+  try { localStorage.setItem('salon_gs_cfg', JSON.stringify(cfg)); } catch(e){}
+  enterAdmin();
+}
+
 function checkPw() {
-  // Aceita a senha salva OU 'admin123' como fallback universal
   const entered = v('admin-pw');
-  const correct = cfg.adminpw || 'admin123';
-  if (entered === correct || entered === 'admin123') {
+  if (entered === cfg.adminpw) {
     adminUnlocked = true;
     closeLoginModal();
     el('tab-btn-admin').classList.remove('hidden');
@@ -459,8 +506,26 @@ function checkPw() {
     switchTab('admin');
   } else {
     el('pw-err').style.display = 'block';
-    el('pw-err').textContent = 'Senha incorreta. Tente admin123 se for o primeiro acesso.';
+    el('pw-err').textContent = 'Senha incorreta';
   }
+}
+
+function changeAdminPassword() {
+  const p1 = v('cfg-adminpw-new'), p2 = v('cfg-adminpw-confirm');
+  const msg = el('pw-change-msg');
+  if (!p1) { msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='Digite a nova senha'; return; }
+  if (p1 !== p2) { msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='As senhas não conferem'; return; }
+  cfg.adminpw = p1;
+  try { localStorage.setItem('salon_gs_cfg', JSON.stringify(cfg)); } catch(e){}
+  set('cfg-adminpw-new',''); set('cfg-adminpw-confirm','');
+  msg.style.display='block'; msg.style.color='var(--green)'; msg.textContent='Senha salva com sucesso!';
+  setTimeout(() => { msg.style.display='none'; }, 2500);
+  updatePwStatus();
+}
+
+function updatePwStatus() {
+  const st = el('pw-status');
+  if (st) st.textContent = cfg.adminpw ? '🔒 Senha cadastrada' : '⚠️ Sem senha — qualquer pessoa pode acessar o admin';
 }
 
 function adminLogout() {
@@ -562,6 +627,7 @@ function switchTab(t) {
     el('adm-date').value = new Date().toISOString().split('T')[0];
     loadAdminData();
   }
+  if (t === 'config') { updatePwStatus(); }
   if (t === 'client') {
     applyConfig();
     el('cl-date').value = new Date().toISOString().split('T')[0];

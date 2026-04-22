@@ -623,9 +623,14 @@ function switchTab(t) {
   el('tab-btn-'+t).classList.add('active');
   el('tab-'+t).classList.add('active');
   if (t === 'admin') {
-    if (!cfg.url) { toast('Configure a URL do Apps Script primeiro', 'err'); switchTab('config'); return; }
     el('adm-date').value = new Date().toISOString().split('T')[0];
-    loadAdminData();
+    if (!cfg.url) {
+      el('admin-list').innerHTML = '<p class="empty">⚠️ Configure a URL do Apps Script na aba Configuração para ver os agendamentos.</p>';
+      el('admin-count').textContent = 'URL do Apps Script não configurada';
+      el('admin-slots').innerHTML = '<p class="empty">Configure a URL do Apps Script primeiro.</p>';
+    } else {
+      loadAdminData();
+    }
   }
   if (t === 'config') { updatePwStatus(); }
   if (t === 'client') {

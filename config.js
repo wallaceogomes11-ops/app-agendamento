@@ -4,20 +4,20 @@
    o sistema para cada estabelecimento.
 ════════════════════════════════════════════════════ */
 
-const BARBERSHOP_CONFIG = {
+const ESTUDIO M_CONFIG = {
 
   /* ── 1. NOME DO ESTABELECIMENTO ─────────────────
      Aparece no titulo da pagina e no comprovante.  */
-  NOME: 'Barbearia do Joao',
+  NOME: 'Estudio M',
 
   /* ── 2. SERVICOS E PRECOS ────────────────────────
      Adicione, remova ou renomeie os servicos.
      Formato: 'Nome do Servico': 'XX,XX'           */
   SERVICOS: {
-    'Corte Simples': '35,00',
-    'Barba':         '25,00',
-    'Corte + Barba': '55,00',
-    'Hidratacao':    '40,00',
+    'Unha Acrigel': '35,00',
+    'Limpeza':         '25,00',
+    'Pintura': '55,00',
+    'Corte + limpeza':    '40,00',
     'Pigmentacao':   '80,00',
   },
 
